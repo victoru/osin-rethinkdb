@@ -155,6 +155,11 @@ func (s *RethinkDBStorage) RemoveAuthorize(code string) error {
 
 // SaveAccess creates a new access data
 func (s *RethinkDBStorage) SaveAccess(data *osin.AccessData) error {
+	// limit nested AccessData to one level
+	if data.AccessData != nil {
+		data.AccessData.AccessData = nil
+	}
+
 	_, err := r.Table(accessTable).Insert(data).RunWrite(s.session)
 	return err
 }
@@ -210,6 +215,20 @@ func (s *RethinkDBStorage) getAccessData(fieldName, token string) (*osin.AccessD
 					return nil, err
 				}
 				dataMap["AuthorizeData"].(map[string]interface{})["Client"] = authorizeDataClientStruct
+			}
+		}
+	}
+
+	if accessData := dataMap["AccessData"]; accessData != nil {
+
+		if accessDataClient := accessData.(map[string]interface{})["Client"]; accessDataClient != nil {
+			var accessDataClientStruct osin.Client
+			if accessDataClientID := accessDataClient.(map[string]interface{})["Id"]; accessDataClientID != nil {
+				accessDataClientStruct, err = s.GetClient(accessDataClientID.(string))
+				if err != nil {
+					return nil, err
+				}
+				dataMap["AccessData"].(map[string]interface{})["Client"] = accessDataClientStruct
 			}
 		}
 	}
