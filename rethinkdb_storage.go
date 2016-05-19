@@ -14,6 +14,12 @@ const (
 	refreshTokenField = "RefreshToken"
 )
 
+// ClientGetter returns a function that returns an osin.Client allowing
+// other packages to define their own Clients
+var ClientGetter = func() osin.Client {
+	return &osin.DefaultClient{}
+}
+
 // RethinkDBStorage implements storage for osin
 type RethinkDBStorage struct {
 	session *r.Session
@@ -47,19 +53,13 @@ func (s *RethinkDBStorage) GetClient(clientID string) (osin.Client, error) {
 	}
 	defer result.Close()
 
-	var clientMap map[string]interface{}
-	err = result.One(&clientMap)
+	client := ClientGetter()
+	err = result.One(client)
 	if err != nil {
 		return nil, err
 	}
 
-	var clientStruct osin.DefaultClient
-	err = mapstructure.Decode(clientMap, &clientStruct)
-	if err != nil {
-		return nil, err
-	}
-
-	return &clientStruct, nil
+	return client, nil
 }
 
 // UpdateClient updates given client
